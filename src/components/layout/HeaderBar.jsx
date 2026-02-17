@@ -5,6 +5,7 @@ import { useHotelContext } from "contexts/HotelContext";
 import { db, doc, getDoc } from "../../firebaseConfig";
 import {
   Settings2,
+  ClipboardList,
 } from "lucide-react";
 
 export default function HeaderBar({ today, onLogout }) {
@@ -20,6 +21,11 @@ export default function HeaderBar({ today, onLogout }) {
       label: "General Settings",
       action: () => navigate("/settings/general"),
       icon: Settings2,
+    },
+    {
+      label: "Purchase Requests",
+      action: () => navigate("/purchase-requests"),
+      icon: ClipboardList,
     },
   ];
 

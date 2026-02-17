@@ -5,6 +5,7 @@ import LoginPage from "./components/pages/LoginPage.jsx";
 import DashboardPage from "./components/pages/DashboardPage.jsx";
 import ProtectedRoute from "./components/shared/ProtectedRoute.jsx";
 import GeneralSettingsPage from "./components/pages/GeneralSettingsPage.jsx";
+import PurchaseRequestsPage from "./components/pages/PurchaseRequestsPage.jsx";
 
 export default function AppRouter() {
   return (
@@ -24,6 +25,14 @@ export default function AppRouter() {
         element={
           <ProtectedRoute>
             <GeneralSettingsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/purchase-requests"
+        element={
+          <ProtectedRoute>
+            <PurchaseRequestsPage />
           </ProtectedRoute>
         }
       />
