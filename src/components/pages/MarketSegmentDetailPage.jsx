@@ -1,0 +1,312 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import HeaderBar from "../layout/HeaderBar";
+import PageContainer from "../layout/PageContainer";
+import { auth, signOut } from "../../firebaseConfig";
+import { useHotelContext } from "../../contexts/HotelContext";
+import {
+  getMarketSegment,
+  saveMarketSegment,
+  subscribeSubSegments,
+} from "../../services/segmentationService";
+import { parseMarketSegmentCodesInput } from "../../utils/segmentationUtils";
+
+export default function MarketSegmentDetailPage() {
+  const { segmentId } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { hotelUid } = useHotelContext();
+  const initialSegment = location.state?.segment;
+  const isNew = segmentId === "new" || !segmentId;
+
+  const [formData, setFormData] = useState({
+    name: initialSegment?.name || "",
+    type: initialSegment?.type || "Transient",
+    rateCategoryCode: initialSegment?.rateCategoryCode || "",
+    marketSegmentCodesText:
+      initialSegment?.marketSegmentCodes?.join(", ") ||
+      initialSegment?.marketSegmentCode ||
+      "",
+    countTowardsAdr: initialSegment?.countTowardsAdr ?? true,
+  });
+  const [subSegments, setSubSegments] = useState([]);
+  const [statusMessage, setStatusMessage] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const todayLabel = useMemo(
+    () =>
+      new Date().toLocaleDateString(undefined, {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+      }),
+    []
+  );
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    sessionStorage.clear();
+    window.location.href = "/login";
+  };
+
+  useEffect(() => {
+    if (!hotelUid || isNew || initialSegment) return;
+
+    const loadSegment = async () => {
+      setStatusMessage("Market segment laden...");
+      const segment = await getMarketSegment(hotelUid, segmentId);
+      if (segment) {
+        setFormData({
+          name: segment.name || "",
+          type: segment.type || "Transient",
+          rateCategoryCode: segment.rateCategoryCode || "",
+          marketSegmentCodesText:
+            segment.marketSegmentCodes?.join(", ") || segment.marketSegmentCode || "",
+          countTowardsAdr: segment.countTowardsAdr ?? true,
+        });
+        setStatusMessage("");
+      } else {
+        setStatusMessage("Market segment niet gevonden.");
+      }
+    };
+
+    loadSegment();
+  }, [hotelUid, initialSegment, isNew, segmentId]);
+
+  useEffect(() => {
+    if (!hotelUid || !segmentId || isNew) {
+      setSubSegments([]);
+      return undefined;
+    }
+
+    const unsubscribe = subscribeSubSegments(hotelUid, setSubSegments, {
+      marketSegmentId: segmentId,
+    });
+    return () => unsubscribe();
+  }, [hotelUid, isNew, segmentId]);
+
+  const handleChange = (event) => {
+    const { name, value, type, checked } = event.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  const parsedMarketSegmentCodes = useMemo(
+    () => parseMarketSegmentCodesInput(formData.marketSegmentCodesText),
+    [formData.marketSegmentCodesText]
+  );
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (!formData.name.trim()) {
+      setStatusMessage("Naam is verplicht.");
+      return;
+    }
+
+    if (!formData.type) {
+      setStatusMessage("Type is verplicht.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const primaryMarketSegmentCode = parsedMarketSegmentCodes[0] || "";
+      const savedId = await saveMarketSegment(
+        hotelUid,
+        isNew ? null : segmentId,
+        {
+          name: formData.name.trim(),
+          type: formData.type,
+          rateCategoryCode: formData.rateCategoryCode,
+          marketSegmentCode: primaryMarketSegmentCode,
+          marketSegmentCodes: parsedMarketSegmentCodes,
+          countTowardsAdr: formData.countTowardsAdr,
+        }
+      );
+      setStatusMessage("Market segment opgeslagen.");
+      if (isNew && savedId) {
+        navigate(`/settings/segmentation-mapping/market-segments/${savedId}`, {
+          replace: true,
+          state: {
+            segment: {
+              id: savedId,
+              name: formData.name.trim(),
+              type: formData.type,
+              rateCategoryCode: formData.rateCategoryCode,
+              marketSegmentCode: primaryMarketSegmentCode,
+              marketSegmentCodes: parsedMarketSegmentCodes,
+              countTowardsAdr: formData.countTowardsAdr,
+            },
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Opslaan mislukt", error);
+      setStatusMessage("Opslaan mislukt. Probeer het opnieuw.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 text-gray-900">
+      <HeaderBar today={todayLabel} onLogout={handleLogout} />
+
+      <PageContainer className="space-y-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm text-gray-500 uppercase tracking-wide">Settings</p>
+            <h1 className="text-3xl font-semibold">
+              {formData.name || (isNew ? "Nieuw Market Segment" : "Market Segment")}
+            </h1>
+            <p className="text-gray-600 mt-1">
+              Vul de naam van het market segment in en beheer de gekoppelde sub segments.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate(-1)}
+            className="px-4 py-2 rounded-md border border-gray-200 text-gray-800 font-medium hover:bg-gray-50"
+          >
+            Terug
+          </button>
+        </div>
+
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white border border-gray-200 rounded-lg shadow-sm p-6 space-y-4"
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label className="flex flex-col gap-1 text-sm font-semibold text-gray-700">
+              Naam
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                className="border border-gray-300 rounded px-3 py-2 text-gray-900"
+                placeholder="bv. Corporate"
+                required
+              />
+            </label>
+
+            <label className="flex flex-col gap-1 text-sm font-semibold text-gray-700">
+              Type
+              <select
+                name="type"
+                value={formData.type}
+                onChange={handleChange}
+                className="border border-gray-300 rounded px-3 py-2 text-gray-900"
+                required
+              >
+                <option value="Transient">Transient</option>
+                <option value="Group">Group</option>
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1 text-sm font-semibold text-gray-700">
+              Rate Category Code
+              <input
+                type="text"
+                name="rateCategoryCode"
+                value={formData.rateCategoryCode}
+                onChange={handleChange}
+                className="border border-gray-300 rounded px-3 py-2 text-gray-900"
+                placeholder="bv. RAC"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1 text-sm font-semibold text-gray-700">
+              Market Segment Codes
+              <input
+                type="text"
+                name="marketSegmentCodesText"
+                value={formData.marketSegmentCodesText}
+                onChange={handleChange}
+                className="border border-gray-300 rounded px-3 py-2 text-gray-900"
+                placeholder="bv. MSC1, MSC2"
+              />
+              <span className="text-xs font-normal text-gray-500">
+                Scheid meerdere codes met komma&apos;s.
+              </span>
+              {parsedMarketSegmentCodes.length ? (
+                <div className="flex flex-wrap gap-2 pt-2">
+                  {parsedMarketSegmentCodes.map((code) => (
+                    <span
+                      key={code}
+                      className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-700"
+                    >
+                      {code}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <span className="text-xs font-normal text-gray-400 pt-1">
+                  Nog geen codes toegevoegd.
+                </span>
+              )}
+            </label>
+
+            <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+              <input
+                type="checkbox"
+                name="countTowardsAdr"
+                checked={formData.countTowardsAdr}
+                onChange={handleChange}
+                className="h-4 w-4 rounded border-gray-300 text-[#b41f1f] focus:ring-[#b41f1f]"
+              />
+              Count towards ADR
+            </label>
+          </div>
+
+          <div className="flex items-center justify-between pt-2">
+            <div className="text-sm text-gray-600">
+              {isNew
+                ? "Dit market segment wordt aangemaakt en opgeslagen in Firebase."
+                : "Werk de naam bij en sla op om Firebase bij te werken."}
+            </div>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-4 py-2 bg-[#b41f1f] text-white rounded-md font-semibold hover:bg-[#9c1a1a] disabled:opacity-60"
+            >
+              {saving ? "Opslaan..." : "Opslaan"}
+            </button>
+          </div>
+
+          {statusMessage && (
+            <div className="text-sm text-[#b41f1f] font-semibold">{statusMessage}</div>
+          )}
+        </form>
+
+        {!isNew && (
+          <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6 space-y-3">
+            <h2 className="text-lg font-semibold">Gekoppelde Sub Segments</h2>
+            {subSegments.length ? (
+              <ul className="space-y-2">
+                {subSegments.map((subSegment) => (
+                  <li
+                    key={subSegment.id}
+                    className="flex items-center justify-between border border-gray-100 rounded px-3 py-2"
+                  >
+                    <div className="text-base font-medium text-gray-900">
+                      {subSegment.name}
+                    </div>
+                    {subSegment.prefix && (
+                      <span className="text-sm text-gray-600">{subSegment.prefix}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-gray-600">
+                Er zijn nog geen sub segments gekoppeld aan dit market segment.
+              </p>
+            )}
+          </div>
+        )}
+      </PageContainer>
+    </div>
+  );
+}
