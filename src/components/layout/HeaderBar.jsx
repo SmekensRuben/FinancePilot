@@ -127,8 +127,8 @@ export default function HeaderBar({ today, onLogout }) {
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
-          <div ref={settingsMenuRef} className="flex justify-end w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div ref={settingsMenuRef} className="flex justify-start w-full sm:w-auto">
             <div className="relative w-full sm:w-auto">
               <button
                 onClick={() => {
@@ -169,7 +169,7 @@ export default function HeaderBar({ today, onLogout }) {
             </div>
           </div>
 
-          <div ref={requisitionMenuRef} className="flex justify-end w-full sm:w-auto">
+          <div ref={requisitionMenuRef} className="flex justify-start w-full sm:w-auto">
             <div className="relative w-full sm:w-auto">
               <button
                 onClick={() => {

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { ListPlus, Trash2 } from "lucide-react";
+import { Check, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import HeaderBar from "../layout/HeaderBar";
 import PageContainer from "../layout/PageContainer";
@@ -27,8 +27,10 @@ export default function PurchaseRequestNewPage() {
   const { hotelUid } = useHotelContext();
   const [saving, setSaving] = useState(false);
   const [purchaseRequestLists, setPurchaseRequestLists] = useState([]);
-  const [selectedListsByItem, setSelectedListsByItem] = useState({});
-  const [addingItemIndex, setAddingItemIndex] = useState(null);
+  const [selectedItemsByIndex, setSelectedItemsByIndex] = useState({});
+  const [isListModalOpen, setIsListModalOpen] = useState(false);
+  const [selectedListId, setSelectedListId] = useState("");
+  const [addingItemsToList, setAddingItemsToList] = useState(false);
   const [form, setForm] = useState({
     title: "",
     requiredDeliveryDate: "",
@@ -44,6 +46,10 @@ export default function PurchaseRequestNewPage() {
       }),
     []
   );
+
+  const selectedItemIndexes = Object.entries(selectedItemsByIndex)
+    .filter(([, isSelected]) => isSelected)
+    .map(([index]) => Number(index));
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -84,11 +90,32 @@ export default function PurchaseRequestNewPage() {
         return { ...previous, items: [{ ...emptyItem }] };
       }
 
+      const nextItems = previous.items.filter((_, itemIndex) => itemIndex !== index);
+      const nextSelected = {};
+
+      Object.entries(selectedItemsByIndex).forEach(([itemIndex, isSelected]) => {
+        const currentIndex = Number(itemIndex);
+        if (currentIndex === index || !isSelected) {
+          return;
+        }
+
+        nextSelected[currentIndex > index ? currentIndex - 1 : currentIndex] = true;
+      });
+
+      setSelectedItemsByIndex(nextSelected);
+
       return {
         ...previous,
-        items: previous.items.filter((_, itemIndex) => itemIndex !== index),
+        items: nextItems,
       };
     });
+  };
+
+  const toggleItemSelection = (index) => {
+    setSelectedItemsByIndex((previous) => ({
+      ...previous,
+      [index]: !previous[index],
+    }));
   };
 
   const handleCreate = async () => {
@@ -102,17 +129,23 @@ export default function PurchaseRequestNewPage() {
     navigate("/purchase-requests");
   };
 
-  const handleAddItemToList = async (item, itemIndex) => {
-    const selectedListId = selectedListsByItem[itemIndex];
-    if (!selectedListId || !hotelUid) {
+  const handleConfirmAddSelectedItems = async () => {
+    if (!hotelUid || !selectedListId || selectedItemIndexes.length === 0) {
       return;
     }
 
-    setAddingItemIndex(itemIndex);
+    setAddingItemsToList(true);
     try {
-      await addItemToPurchaseRequestList(hotelUid, selectedListId, item);
+      await Promise.all(
+        selectedItemIndexes.map((itemIndex) =>
+          addItemToPurchaseRequestList(hotelUid, selectedListId, form.items[itemIndex])
+        )
+      );
+      setIsListModalOpen(false);
+      setSelectedListId("");
+      setSelectedItemsByIndex({});
     } finally {
-      setAddingItemIndex(null);
+      setAddingItemsToList(false);
     }
   };
 
@@ -155,10 +188,22 @@ export default function PurchaseRequestNewPage() {
             </label>
           </div>
 
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setIsListModalOpen(true)}
+              disabled={selectedItemIndexes.length === 0 || purchaseRequestLists.length === 0}
+              className="bg-[#b41f1f] text-white px-4 py-2 rounded font-semibold text-sm disabled:opacity-60"
+            >
+              Voeg item toe aan Purchase Request List
+            </button>
+          </div>
+
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="text-left text-gray-500">
+                  <th className="py-2 pr-2">Select</th>
                   <th className="py-2 pr-2">Article Number</th>
                   <th className="py-2 pr-2">Name</th>
                   <th className="py-2 pr-2">Supplier</th>
@@ -166,13 +211,26 @@ export default function PurchaseRequestNewPage() {
                   <th className="py-2 pr-2">Quantity</th>
                   <th className="py-2 pr-2">Net Price</th>
                   <th className="py-2 pr-2">Vat %</th>
-                  <th className="py-2 pr-2">To list</th>
                   <th className="py-2 pr-2" />
                 </tr>
               </thead>
               <tbody>
                 {form.items.map((item, index) => (
                   <tr key={`new-item-${index}`} className="border-t border-gray-100">
+                    <td className="py-2 pr-2">
+                      <button
+                        type="button"
+                        onClick={() => toggleItemSelection(index)}
+                        className={`inline-flex h-6 w-6 items-center justify-center rounded border ${
+                          selectedItemsByIndex[index]
+                            ? "border-[#b41f1f] bg-[#b41f1f] text-white"
+                            : "border-gray-300 text-transparent"
+                        }`}
+                        aria-label="Selecteer item"
+                      >
+                        <Check className="h-4 w-4" />
+                      </button>
+                    </td>
                     <td className="py-2 pr-2">
                       <input
                         type="text"
@@ -236,37 +294,6 @@ export default function PurchaseRequestNewPage() {
                       />
                     </td>
                     <td className="py-2 pr-2">
-                      <div className="flex items-center gap-2">
-                        <select
-                          value={selectedListsByItem[index] || ""}
-                          onChange={(event) =>
-                            setSelectedListsByItem((previous) => ({
-                              ...previous,
-                              [index]: event.target.value,
-                            }))
-                          }
-                          className="rounded border border-gray-300 px-2 py-1 w-36"
-                        >
-                          <option value="">Selecteer lijst</option>
-                          {purchaseRequestLists.map((list) => (
-                            <option key={list.id} value={list.id}>
-                              {list.title}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          type="button"
-                          onClick={() => handleAddItemToList(item, index)}
-                          disabled={!selectedListsByItem[index] || addingItemIndex === index}
-                          className="text-gray-500 hover:text-[#b41f1f] disabled:opacity-50"
-                          aria-label="Voeg item toe aan Purchase Request List"
-                          title="Voeg item toe aan Purchase Request List"
-                        >
-                          <ListPlus className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                    <td className="py-2 pr-2">
                       <button
                         type="button"
                         onClick={() => removeItemRow(index)}
@@ -311,6 +338,54 @@ export default function PurchaseRequestNewPage() {
           </div>
         </Card>
       </PageContainer>
+
+      {isListModalOpen && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
+            <h2 className="text-lg font-semibold text-gray-900">Selecteer Purchase Request List</h2>
+            <p className="mt-1 text-sm text-gray-600">
+              {selectedItemIndexes.length} geselecteerde item(s) worden toegevoegd aan de gekozen lijst.
+            </p>
+
+            <label className="mt-4 flex flex-col gap-1 text-sm font-semibold text-gray-700">
+              Purchase Request List
+              <select
+                value={selectedListId}
+                onChange={(event) => setSelectedListId(event.target.value)}
+                className="rounded border border-gray-300 px-3 py-2 text-sm"
+              >
+                <option value="">Selecteer lijst</option>
+                {purchaseRequestLists.map((list) => (
+                  <option key={list.id} value={list.id}>
+                    {list.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsListModalOpen(false);
+                  setSelectedListId("");
+                }}
+                className="px-3 py-2 border border-gray-300 rounded font-semibold text-sm"
+              >
+                Annuleren
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmAddSelectedItems}
+                disabled={!selectedListId || addingItemsToList || selectedItemIndexes.length === 0}
+                className="bg-[#b41f1f] text-white px-4 py-2 rounded font-semibold text-sm disabled:opacity-60"
+              >
+                {addingItemsToList ? "Toevoegen..." : "Bevestigen"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
