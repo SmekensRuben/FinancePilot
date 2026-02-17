@@ -7,6 +7,8 @@ import ProtectedRoute from "./components/shared/ProtectedRoute.jsx";
 import GeneralSettingsPage from "./components/pages/GeneralSettingsPage.jsx";
 import PurchaseRequestsPage from "./components/pages/PurchaseRequestsPage.jsx";
 import PurchaseRequestNewPage from "./components/pages/PurchaseRequestNewPage.jsx";
+import PurchaseRequestPreviewPage from "./components/pages/PurchaseRequestPreviewPage.jsx";
+import PurchaseRequestEditPage from "./components/pages/PurchaseRequestEditPage.jsx";
 import PurchaseRequestListsPage from "./components/pages/PurchaseRequestListsPage.jsx";
 import PurchaseRequestListNewPage from "./components/pages/PurchaseRequestListNewPage.jsx";
 import PurchaseRequestListPreviewPage from "./components/pages/PurchaseRequestListPreviewPage.jsx";
@@ -46,6 +48,22 @@ export default function AppRouter() {
         element={
           <ProtectedRoute>
             <PurchaseRequestNewPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/purchase-requests/:requestId"
+        element={
+          <ProtectedRoute>
+            <PurchaseRequestPreviewPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/purchase-requests/:requestId/edit"
+        element={
+          <ProtectedRoute>
+            <PurchaseRequestEditPage />
           </ProtectedRoute>
         }
       />

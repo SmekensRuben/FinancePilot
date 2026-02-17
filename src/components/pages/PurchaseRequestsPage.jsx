@@ -1,18 +1,22 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import HeaderBar from "../layout/HeaderBar";
 import PageContainer from "../layout/PageContainer";
 import { Card } from "../layout/Card";
 import { auth, signOut } from "../../firebaseConfig";
 import { useHotelContext } from "../../contexts/HotelContext";
-import { getPurchaseRequests } from "../../services/firebasePurchaseRequests";
+import {
+  deletePurchaseRequest,
+  getPurchaseRequests,
+} from "../../services/firebasePurchaseRequests";
 
 export default function PurchaseRequestsPage() {
   const navigate = useNavigate();
   const { hotelUid } = useHotelContext();
   const [purchaseRequests, setPurchaseRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState("");
 
   const todayLabel = useMemo(
     () =>
@@ -30,22 +34,37 @@ export default function PurchaseRequestsPage() {
     window.location.href = "/login";
   };
 
-  useEffect(() => {
-    async function loadPurchaseRequests() {
-      if (!hotelUid) {
-        setPurchaseRequests([]);
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      const data = await getPurchaseRequests(hotelUid);
-      setPurchaseRequests(data);
+  const loadPurchaseRequests = React.useCallback(async () => {
+    if (!hotelUid) {
+      setPurchaseRequests([]);
       setLoading(false);
+      return;
     }
 
-    loadPurchaseRequests();
+    setLoading(true);
+    const data = await getPurchaseRequests(hotelUid);
+    setPurchaseRequests(data);
+    setLoading(false);
   }, [hotelUid]);
+
+  useEffect(() => {
+    loadPurchaseRequests();
+  }, [loadPurchaseRequests]);
+
+  const handleDelete = async (event, requestId) => {
+    event.stopPropagation();
+    if (!hotelUid) {
+      return;
+    }
+
+    setDeletingId(requestId);
+    try {
+      await deletePurchaseRequest(hotelUid, requestId);
+      await loadPurchaseRequests();
+    } finally {
+      setDeletingId("");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
@@ -73,45 +92,58 @@ export default function PurchaseRequestsPage() {
           ) : purchaseRequests.length === 0 ? (
             <p className="text-gray-600">Er zijn nog geen Purchase Requests.</p>
           ) : (
-            <div className="space-y-4">
-              {purchaseRequests.map((request) => (
-                <div key={request.id} className="rounded border border-gray-200 p-4 bg-white">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <h2 className="text-lg font-semibold text-gray-900">{request.title}</h2>
-                    <span className="text-sm text-gray-600">
-                      Required delivery date: {request.requiredDeliveryDate}
-                    </span>
-                  </div>
-                  <div className="mt-3 overflow-x-auto">
-                    <table className="min-w-full text-sm">
-                      <thead>
-                        <tr className="text-left text-gray-500">
-                          <th className="py-2 pr-4">Article Number</th>
-                          <th className="py-2 pr-4">Name</th>
-                          <th className="py-2 pr-4">Supplier</th>
-                          <th className="py-2 pr-4">Unit</th>
-                          <th className="py-2 pr-4">Quantity</th>
-                          <th className="py-2 pr-4">Net Price</th>
-                          <th className="py-2 pr-4">Vat %</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {request.items.map((item, index) => (
-                          <tr key={`${request.id}-item-${index}`} className="border-t border-gray-100">
-                            <td className="py-2 pr-4">{item.articleNumber}</td>
-                            <td className="py-2 pr-4">{item.name}</td>
-                            <td className="py-2 pr-4">{item.supplier}</td>
-                            <td className="py-2 pr-4">{item.unit}</td>
-                            <td className="py-2 pr-4">{item.quantity}</td>
-                            <td className="py-2 pr-4">{item.netPrice}</td>
-                            <td className="py-2 pr-4">{item.vatPercent}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="text-left text-gray-500 border-b border-gray-200">
+                    <th className="py-2 pr-4">Title</th>
+                    <th className="py-2 pr-4">Required delivery date</th>
+                    <th className="py-2 pr-4">Status</th>
+                    <th className="py-2 pr-4">Aantal items</th>
+                    <th className="py-2 pr-4">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {purchaseRequests.map((request) => (
+                    <tr
+                      key={request.id}
+                      onClick={() => navigate(`/purchase-requests/${request.id}`)}
+                      className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                    >
+                      <td className="py-3 pr-4 font-semibold text-gray-900">{request.title}</td>
+                      <td className="py-3 pr-4 text-gray-700">{request.requiredDeliveryDate}</td>
+                      <td className="py-3 pr-4 text-gray-700">{request.status || "Created"}</td>
+                      <td className="py-3 pr-4 text-gray-700">{request.items.length}</td>
+                      <td className="py-3 pr-4">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              navigate(`/purchase-requests/${request.id}/edit`);
+                            }}
+                            className="text-gray-500 hover:text-[#b41f1f]"
+                            aria-label="Bewerk request"
+                            title="Bewerk request"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(event) => handleDelete(event, request.id)}
+                            disabled={deletingId === request.id}
+                            className="text-gray-500 hover:text-red-600 disabled:opacity-50"
+                            aria-label="Verwijder request"
+                            title="Verwijder request"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </Card>
