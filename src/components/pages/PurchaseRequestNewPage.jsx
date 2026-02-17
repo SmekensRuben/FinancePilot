@@ -22,6 +22,10 @@ const emptyItem = {
   vatPercent: "",
 };
 
+function toItemOptionLabel(item) {
+  return [item.articleNumber, item.name, item.supplier].filter(Boolean).join(" - ");
+}
+
 export default function PurchaseRequestNewPage() {
   const navigate = useNavigate();
   const { hotelUid } = useHotelContext();
@@ -31,6 +35,7 @@ export default function PurchaseRequestNewPage() {
   const [isListModalOpen, setIsListModalOpen] = useState(false);
   const [selectedListId, setSelectedListId] = useState("");
   const [addingItemsToList, setAddingItemsToList] = useState(false);
+  const [itemComboboxValue, setItemComboboxValue] = useState("");
   const [form, setForm] = useState({
     title: "",
     requiredDeliveryDate: "",
@@ -50,6 +55,40 @@ export default function PurchaseRequestNewPage() {
   const selectedItemIndexes = Object.entries(selectedItemsByIndex)
     .filter(([, isSelected]) => isSelected)
     .map(([index]) => Number(index));
+
+  const purchaseListItems = useMemo(() => {
+    const seen = new Set();
+    const merged = [];
+
+    purchaseRequestLists.forEach((list) => {
+      (list.items || []).forEach((item) => {
+        const key = JSON.stringify({
+          articleNumber: item.articleNumber || "",
+          name: item.name || "",
+          supplier: item.supplier || "",
+          unit: item.unit || "",
+          quantity: Number(item.quantity) || 0,
+          netPrice: Number(item.netPrice) || 0,
+          vatPercent: Number(item.vatPercent) || 0,
+        });
+
+        if (!seen.has(key)) {
+          seen.add(key);
+          merged.push({
+            articleNumber: item.articleNumber || "",
+            name: item.name || "",
+            supplier: item.supplier || "",
+            unit: item.unit || "",
+            quantity: Number(item.quantity) || 0,
+            netPrice: Number(item.netPrice) || 0,
+            vatPercent: Number(item.vatPercent) || 0,
+          });
+        }
+      });
+    });
+
+    return merged;
+  }, [purchaseRequestLists]);
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -82,6 +121,16 @@ export default function PurchaseRequestNewPage() {
 
   const addItemRow = () => {
     setForm((previous) => ({ ...previous, items: [...previous.items, { ...emptyItem }] }));
+  };
+
+  const addItemFromCombobox = () => {
+    const selected = purchaseListItems.find((item) => toItemOptionLabel(item) === itemComboboxValue);
+    if (!selected) {
+      return;
+    }
+
+    setForm((previous) => ({ ...previous, items: [...previous.items, { ...selected }] }));
+    setItemComboboxValue("");
   };
 
   const removeItemRow = (index) => {
@@ -186,6 +235,32 @@ export default function PurchaseRequestNewPage() {
                 className="rounded border border-gray-300 px-3 py-2 text-sm"
               />
             </label>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+            <label className="flex flex-col gap-1 text-sm font-semibold text-gray-700">
+              Purchase Item (uit bestaande Purchase Request Lists)
+              <input
+                list="purchase-list-items"
+                value={itemComboboxValue}
+                onChange={(event) => setItemComboboxValue(event.target.value)}
+                placeholder="Zoek op artikelnummer, naam of leverancier"
+                className="rounded border border-gray-300 px-3 py-2 text-sm"
+              />
+              <datalist id="purchase-list-items">
+                {purchaseListItems.map((item, index) => (
+                  <option key={`${toItemOptionLabel(item)}-${index}`} value={toItemOptionLabel(item)} />
+                ))}
+              </datalist>
+            </label>
+            <button
+              type="button"
+              onClick={addItemFromCombobox}
+              disabled={!itemComboboxValue.trim()}
+              className="px-3 py-2 border border-gray-300 rounded font-semibold text-sm disabled:opacity-60"
+            >
+              Item via combobox toevoegen
+            </button>
           </div>
 
           <div className="flex justify-end">

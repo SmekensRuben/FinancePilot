@@ -9,6 +9,8 @@ import PurchaseRequestsPage from "./components/pages/PurchaseRequestsPage.jsx";
 import PurchaseRequestNewPage from "./components/pages/PurchaseRequestNewPage.jsx";
 import PurchaseRequestListsPage from "./components/pages/PurchaseRequestListsPage.jsx";
 import PurchaseRequestListNewPage from "./components/pages/PurchaseRequestListNewPage.jsx";
+import PurchaseRequestListPreviewPage from "./components/pages/PurchaseRequestListPreviewPage.jsx";
+import PurchaseRequestListEditPage from "./components/pages/PurchaseRequestListEditPage.jsx";
 
 export default function AppRouter() {
   return (
@@ -60,6 +62,22 @@ export default function AppRouter() {
         element={
           <ProtectedRoute>
             <PurchaseRequestListNewPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/purchase-request-lists/:listId"
+        element={
+          <ProtectedRoute>
+            <PurchaseRequestListPreviewPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/purchase-request-lists/:listId/edit"
+        element={
+          <ProtectedRoute>
+            <PurchaseRequestListEditPage />
           </ProtectedRoute>
         }
       />

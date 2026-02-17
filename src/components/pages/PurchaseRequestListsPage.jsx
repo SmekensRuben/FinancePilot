@@ -1,18 +1,22 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import HeaderBar from "../layout/HeaderBar";
 import PageContainer from "../layout/PageContainer";
 import { Card } from "../layout/Card";
 import { auth, signOut } from "../../firebaseConfig";
 import { useHotelContext } from "../../contexts/HotelContext";
-import { getPurchaseRequestLists } from "../../services/firebasePurchaseRequestLists";
+import {
+  deletePurchaseRequestList,
+  getPurchaseRequestLists,
+} from "../../services/firebasePurchaseRequestLists";
 
 export default function PurchaseRequestListsPage() {
   const navigate = useNavigate();
   const { hotelUid } = useHotelContext();
   const [lists, setLists] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState("");
 
   const todayLabel = useMemo(
     () =>
@@ -30,22 +34,37 @@ export default function PurchaseRequestListsPage() {
     window.location.href = "/login";
   };
 
-  useEffect(() => {
-    async function loadLists() {
-      if (!hotelUid) {
-        setLists([]);
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      const data = await getPurchaseRequestLists(hotelUid);
-      setLists(data);
+  const loadLists = React.useCallback(async () => {
+    if (!hotelUid) {
+      setLists([]);
       setLoading(false);
+      return;
     }
 
-    loadLists();
+    setLoading(true);
+    const data = await getPurchaseRequestLists(hotelUid);
+    setLists(data);
+    setLoading(false);
   }, [hotelUid]);
+
+  useEffect(() => {
+    loadLists();
+  }, [loadLists]);
+
+  const handleDelete = async (event, listId) => {
+    event.stopPropagation();
+    if (!hotelUid) {
+      return;
+    }
+
+    setDeletingId(listId);
+    try {
+      await deletePurchaseRequestList(hotelUid, listId);
+      await loadLists();
+    } finally {
+      setDeletingId("");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
@@ -74,43 +93,54 @@ export default function PurchaseRequestListsPage() {
           ) : lists.length === 0 ? (
             <p className="text-gray-600">Er zijn nog geen Purchase Request Lists.</p>
           ) : (
-            <div className="space-y-4">
-              {lists.map((list) => (
-                <div key={list.id} className="rounded border border-gray-200 p-4 bg-white">
-                  <div className="flex items-center justify-between gap-2">
-                    <h2 className="text-lg font-semibold text-gray-900">{list.title}</h2>
-                    <span className="text-sm text-gray-600">{list.items.length} items</span>
-                  </div>
-                  <div className="mt-3 overflow-x-auto">
-                    <table className="min-w-full text-sm">
-                      <thead>
-                        <tr className="text-left text-gray-500">
-                          <th className="py-2 pr-4">Article Number</th>
-                          <th className="py-2 pr-4">Name</th>
-                          <th className="py-2 pr-4">Supplier</th>
-                          <th className="py-2 pr-4">Unit</th>
-                          <th className="py-2 pr-4">Quantity</th>
-                          <th className="py-2 pr-4">Net Price</th>
-                          <th className="py-2 pr-4">Vat %</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {list.items.map((item, index) => (
-                          <tr key={`${list.id}-item-${index}`} className="border-t border-gray-100">
-                            <td className="py-2 pr-4">{item.articleNumber}</td>
-                            <td className="py-2 pr-4">{item.name}</td>
-                            <td className="py-2 pr-4">{item.supplier}</td>
-                            <td className="py-2 pr-4">{item.unit}</td>
-                            <td className="py-2 pr-4">{item.quantity}</td>
-                            <td className="py-2 pr-4">{item.netPrice}</td>
-                            <td className="py-2 pr-4">{item.vatPercent}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="text-left text-gray-500 border-b border-gray-200">
+                    <th className="py-2 pr-4">Title</th>
+                    <th className="py-2 pr-4">Aantal items</th>
+                    <th className="py-2 pr-4">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lists.map((list) => (
+                    <tr
+                      key={list.id}
+                      onClick={() => navigate(`/purchase-request-lists/${list.id}`)}
+                      className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                    >
+                      <td className="py-3 pr-4 font-semibold text-gray-900">{list.title}</td>
+                      <td className="py-3 pr-4 text-gray-700">{list.items.length}</td>
+                      <td className="py-3 pr-4">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              navigate(`/purchase-request-lists/${list.id}/edit`);
+                            }}
+                            className="text-gray-500 hover:text-[#b41f1f]"
+                            aria-label="Bewerk lijst"
+                            title="Bewerk lijst"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(event) => handleDelete(event, list.id)}
+                            disabled={deletingId === list.id}
+                            className="text-gray-500 hover:text-red-600 disabled:opacity-50"
+                            aria-label="Verwijder lijst"
+                            title="Verwijder lijst"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </Card>

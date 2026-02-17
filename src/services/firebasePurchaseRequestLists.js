@@ -9,10 +9,21 @@ import {
   doc,
   getDoc,
   updateDoc,
+  deleteDoc,
 } from "../firebaseConfig";
 
 function purchaseRequestListsCollection(hotelUid) {
   return collection(db, `hotels/${hotelUid}/purchaseRequestLists`);
+}
+
+function mapPurchaseRequestList(documentRef) {
+  const data = documentRef.data();
+  return {
+    id: documentRef.id,
+    title: data.title || "",
+    items: Array.isArray(data.items) ? data.items : [],
+    createdAt: data.createdAt,
+  };
 }
 
 export async function getPurchaseRequestLists(hotelUid) {
@@ -24,15 +35,22 @@ export async function getPurchaseRequestLists(hotelUid) {
   );
   const snapshot = await getDocs(listsQuery);
 
-  return snapshot.docs.map((documentRef) => {
-    const data = documentRef.data();
-    return {
-      id: documentRef.id,
-      title: data.title || "",
-      items: Array.isArray(data.items) ? data.items : [],
-      createdAt: data.createdAt,
-    };
-  });
+  return snapshot.docs.map(mapPurchaseRequestList);
+}
+
+export async function getPurchaseRequestListById(hotelUid, listId) {
+  if (!hotelUid || !listId) {
+    return null;
+  }
+
+  const listRef = doc(db, `hotels/${hotelUid}/purchaseRequestLists`, listId);
+  const listSnap = await getDoc(listRef);
+
+  if (!listSnap.exists()) {
+    return null;
+  }
+
+  return mapPurchaseRequestList(listSnap);
 }
 
 function cleanPurchaseItem(item) {
@@ -59,6 +77,29 @@ export async function createPurchaseRequestList(hotelUid, payload) {
     items: cleanItems,
     createdAt: serverTimestamp(),
   });
+}
+
+export async function updatePurchaseRequestList(hotelUid, listId, payload) {
+  if (!hotelUid || !listId) {
+    throw new Error("Hotel uid en listId zijn verplicht");
+  }
+
+  const listRef = doc(db, `hotels/${hotelUid}/purchaseRequestLists`, listId);
+  const cleanItems = (payload.items || []).map(cleanPurchaseItem);
+
+  await updateDoc(listRef, {
+    title: payload.title?.trim() || "",
+    items: cleanItems,
+  });
+}
+
+export async function deletePurchaseRequestList(hotelUid, listId) {
+  if (!hotelUid || !listId) {
+    throw new Error("Hotel uid en listId zijn verplicht");
+  }
+
+  const listRef = doc(db, `hotels/${hotelUid}/purchaseRequestLists`, listId);
+  await deleteDoc(listRef);
 }
 
 export async function addItemToPurchaseRequestList(hotelUid, listId, item) {
