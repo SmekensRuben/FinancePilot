@@ -1,4 +1,4 @@
-import { collection, db, doc, getDocs, updateDoc } from "../firebaseConfig";
+import { collection, db, deleteDoc, doc, getDocs, updateDoc } from "../firebaseConfig";
 
 export async function getAllUsers() {
   try {
@@ -21,6 +21,17 @@ export async function updateUserRoles(userId, hotelUid, roles) {
     await updateDoc(userRef, payload);
   } catch (error) {
     console.error("Kon gebruikersrollen niet bijwerken:", error);
+    throw error;
+  }
+}
+
+export async function deleteUser(userId) {
+  const userRef = doc(db, "users", userId);
+
+  try {
+    await deleteDoc(userRef);
+  } catch (error) {
+    console.error("Kon gebruiker niet verwijderen:", error);
     throw error;
   }
 }

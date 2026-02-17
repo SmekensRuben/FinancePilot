@@ -7,6 +7,7 @@ import {
   Settings2,
   ClipboardList,
   ListChecks,
+  UserCog,
 } from "lucide-react";
 
 export default function HeaderBar({ today, onLogout }) {
@@ -24,6 +25,11 @@ export default function HeaderBar({ today, onLogout }) {
       label: "General Settings",
       action: () => navigate("/settings/general"),
       icon: Settings2,
+    },
+    {
+      label: "User Configuration",
+      action: () => navigate("/settings/user-configuration"),
+      icon: UserCog,
     },
   ];
 

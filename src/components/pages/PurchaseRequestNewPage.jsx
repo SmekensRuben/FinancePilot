@@ -23,7 +23,7 @@ const emptyItem = {
 };
 
 function toItemOptionLabel(item) {
-  return [item.articleNumber, item.name, item.supplier].filter(Boolean).join(" - ");
+  return [item.name, item.supplier, item.listTitle].filter(Boolean).join(" - ");
 }
 
 export default function PurchaseRequestNewPage() {
@@ -70,6 +70,7 @@ export default function PurchaseRequestNewPage() {
           quantity: Number(item.quantity) || 0,
           netPrice: Number(item.netPrice) || 0,
           vatPercent: Number(item.vatPercent) || 0,
+          listTitle: list.title || "",
         });
 
         if (!seen.has(key)) {
@@ -82,6 +83,7 @@ export default function PurchaseRequestNewPage() {
             quantity: Number(item.quantity) || 0,
             netPrice: Number(item.netPrice) || 0,
             vatPercent: Number(item.vatPercent) || 0,
+            listTitle: list.title || "",
           });
         }
       });
@@ -129,7 +131,8 @@ export default function PurchaseRequestNewPage() {
       return;
     }
 
-    setForm((previous) => ({ ...previous, items: [...previous.items, { ...selected }] }));
+    const { listTitle, ...itemData } = selected;
+    setForm((previous) => ({ ...previous, items: [...previous.items, { ...itemData }] }));
     setItemComboboxValue("");
   };
 

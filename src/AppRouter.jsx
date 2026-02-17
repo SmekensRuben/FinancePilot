@@ -13,6 +13,8 @@ import PurchaseRequestListsPage from "./components/pages/PurchaseRequestListsPag
 import PurchaseRequestListNewPage from "./components/pages/PurchaseRequestListNewPage.jsx";
 import PurchaseRequestListPreviewPage from "./components/pages/PurchaseRequestListPreviewPage.jsx";
 import PurchaseRequestListEditPage from "./components/pages/PurchaseRequestListEditPage.jsx";
+import UserConfigurationPage from "./components/pages/UserConfigurationPage.jsx";
+import UserConfigurationEditPage from "./components/pages/UserConfigurationEditPage.jsx";
 
 export default function AppRouter() {
   return (
@@ -32,6 +34,22 @@ export default function AppRouter() {
         element={
           <ProtectedRoute>
             <GeneralSettingsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/user-configuration"
+        element={
+          <ProtectedRoute>
+            <UserConfigurationPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/user-configuration/:userId/edit"
+        element={
+          <ProtectedRoute>
+            <UserConfigurationEditPage />
           </ProtectedRoute>
         }
       />
