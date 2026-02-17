@@ -1,16 +1,12 @@
 import React, { useMemo, useState } from "react";
-import { ListPlus, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import HeaderBar from "../layout/HeaderBar";
 import PageContainer from "../layout/PageContainer";
 import { Card } from "../layout/Card";
 import { auth, signOut } from "../../firebaseConfig";
 import { useHotelContext } from "../../contexts/HotelContext";
-import { createPurchaseRequest } from "../../services/firebasePurchaseRequests";
-import {
-  addItemToPurchaseRequestList,
-  getPurchaseRequestLists,
-} from "../../services/firebasePurchaseRequestLists";
+import { createPurchaseRequestList } from "../../services/firebasePurchaseRequestLists";
 
 const emptyItem = {
   articleNumber: "",
@@ -22,16 +18,12 @@ const emptyItem = {
   vatPercent: "",
 };
 
-export default function PurchaseRequestNewPage() {
+export default function PurchaseRequestListNewPage() {
   const navigate = useNavigate();
   const { hotelUid } = useHotelContext();
   const [saving, setSaving] = useState(false);
-  const [purchaseRequestLists, setPurchaseRequestLists] = useState([]);
-  const [selectedListsByItem, setSelectedListsByItem] = useState({});
-  const [addingItemIndex, setAddingItemIndex] = useState(null);
   const [form, setForm] = useState({
     title: "",
-    requiredDeliveryDate: "",
     items: [{ ...emptyItem }],
   });
 
@@ -50,20 +42,6 @@ export default function PurchaseRequestNewPage() {
     sessionStorage.clear();
     window.location.href = "/login";
   };
-
-  React.useEffect(() => {
-    async function loadLists() {
-      if (!hotelUid) {
-        setPurchaseRequestLists([]);
-        return;
-      }
-
-      const lists = await getPurchaseRequestLists(hotelUid);
-      setPurchaseRequestLists(lists);
-    }
-
-    loadLists();
-  }, [hotelUid]);
 
   const updateItem = (index, key, value) => {
     setForm((previous) => ({
@@ -92,28 +70,14 @@ export default function PurchaseRequestNewPage() {
   };
 
   const handleCreate = async () => {
-    if (!hotelUid || !form.title.trim() || !form.requiredDeliveryDate) {
+    if (!hotelUid || !form.title.trim()) {
       return;
     }
 
     setSaving(true);
-    await createPurchaseRequest(hotelUid, form);
+    await createPurchaseRequestList(hotelUid, form);
     setSaving(false);
-    navigate("/purchase-requests");
-  };
-
-  const handleAddItemToList = async (item, itemIndex) => {
-    const selectedListId = selectedListsByItem[itemIndex];
-    if (!selectedListId || !hotelUid) {
-      return;
-    }
-
-    setAddingItemIndex(itemIndex);
-    try {
-      await addItemToPurchaseRequestList(hotelUid, selectedListId, item);
-    } finally {
-      setAddingItemIndex(null);
-    }
+    navigate("/purchase-request-lists");
   };
 
   return (
@@ -121,39 +85,23 @@ export default function PurchaseRequestNewPage() {
       <HeaderBar today={todayLabel} onLogout={handleLogout} />
       <PageContainer className="space-y-6">
         <div>
-          <p className="text-sm text-gray-500 uppercase tracking-wide">Purchasing</p>
-          <h1 className="text-3xl font-semibold">Nieuwe Purchase Request</h1>
-          <p className="text-gray-600 mt-1">Vul de aanvraaggegevens in en voeg Purchase Items toe.</p>
+          <p className="text-sm text-gray-500 uppercase tracking-wide">Requisition</p>
+          <h1 className="text-3xl font-semibold">Nieuwe Purchase Request List</h1>
+          <p className="text-gray-600 mt-1">Vul de lijstgegevens in en voeg Purchase Items toe.</p>
         </div>
 
         <Card className="space-y-5">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="flex flex-col gap-1 text-sm font-semibold text-gray-700">
-              Title
-              <input
-                type="text"
-                value={form.title}
-                onChange={(event) =>
-                  setForm((previous) => ({ ...previous, title: event.target.value }))
-                }
-                className="rounded border border-gray-300 px-3 py-2 text-sm"
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-sm font-semibold text-gray-700">
-              Required delivery date
-              <input
-                type="date"
-                value={form.requiredDeliveryDate}
-                onChange={(event) =>
-                  setForm((previous) => ({
-                    ...previous,
-                    requiredDeliveryDate: event.target.value,
-                  }))
-                }
-                className="rounded border border-gray-300 px-3 py-2 text-sm"
-              />
-            </label>
-          </div>
+          <label className="flex flex-col gap-1 text-sm font-semibold text-gray-700 sm:max-w-md">
+            Title
+            <input
+              type="text"
+              value={form.title}
+              onChange={(event) =>
+                setForm((previous) => ({ ...previous, title: event.target.value }))
+              }
+              className="rounded border border-gray-300 px-3 py-2 text-sm"
+            />
+          </label>
 
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
@@ -166,13 +114,12 @@ export default function PurchaseRequestNewPage() {
                   <th className="py-2 pr-2">Quantity</th>
                   <th className="py-2 pr-2">Net Price</th>
                   <th className="py-2 pr-2">Vat %</th>
-                  <th className="py-2 pr-2">To list</th>
                   <th className="py-2 pr-2" />
                 </tr>
               </thead>
               <tbody>
                 {form.items.map((item, index) => (
-                  <tr key={`new-item-${index}`} className="border-t border-gray-100">
+                  <tr key={`new-list-item-${index}`} className="border-t border-gray-100">
                     <td className="py-2 pr-2">
                       <input
                         type="text"
@@ -236,37 +183,6 @@ export default function PurchaseRequestNewPage() {
                       />
                     </td>
                     <td className="py-2 pr-2">
-                      <div className="flex items-center gap-2">
-                        <select
-                          value={selectedListsByItem[index] || ""}
-                          onChange={(event) =>
-                            setSelectedListsByItem((previous) => ({
-                              ...previous,
-                              [index]: event.target.value,
-                            }))
-                          }
-                          className="rounded border border-gray-300 px-2 py-1 w-36"
-                        >
-                          <option value="">Selecteer lijst</option>
-                          {purchaseRequestLists.map((list) => (
-                            <option key={list.id} value={list.id}>
-                              {list.title}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          type="button"
-                          onClick={() => handleAddItemToList(item, index)}
-                          disabled={!selectedListsByItem[index] || addingItemIndex === index}
-                          className="text-gray-500 hover:text-[#b41f1f] disabled:opacity-50"
-                          aria-label="Voeg item toe aan Purchase Request List"
-                          title="Voeg item toe aan Purchase Request List"
-                        >
-                          <ListPlus className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                    <td className="py-2 pr-2">
                       <button
                         type="button"
                         onClick={() => removeItemRow(index)}
@@ -294,7 +210,7 @@ export default function PurchaseRequestNewPage() {
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => navigate("/purchase-requests")}
+                onClick={() => navigate("/purchase-request-lists")}
                 className="px-3 py-2 border border-gray-300 rounded font-semibold text-sm"
               >
                 Annuleren
@@ -302,10 +218,10 @@ export default function PurchaseRequestNewPage() {
               <button
                 type="button"
                 onClick={handleCreate}
-                disabled={saving || !form.title.trim() || !form.requiredDeliveryDate || !hotelUid}
+                disabled={saving || !form.title.trim() || !hotelUid}
                 className="bg-[#b41f1f] text-white px-4 py-2 rounded font-semibold text-sm disabled:opacity-60"
               >
-                {saving ? "Opslaan..." : "Purchase Request opslaan"}
+                {saving ? "Opslaan..." : "Purchase Request List opslaan"}
               </button>
             </div>
           </div>

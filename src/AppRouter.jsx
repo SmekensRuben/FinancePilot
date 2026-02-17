@@ -7,6 +7,8 @@ import ProtectedRoute from "./components/shared/ProtectedRoute.jsx";
 import GeneralSettingsPage from "./components/pages/GeneralSettingsPage.jsx";
 import PurchaseRequestsPage from "./components/pages/PurchaseRequestsPage.jsx";
 import PurchaseRequestNewPage from "./components/pages/PurchaseRequestNewPage.jsx";
+import PurchaseRequestListsPage from "./components/pages/PurchaseRequestListsPage.jsx";
+import PurchaseRequestListNewPage from "./components/pages/PurchaseRequestListNewPage.jsx";
 
 export default function AppRouter() {
   return (
@@ -42,6 +44,22 @@ export default function AppRouter() {
         element={
           <ProtectedRoute>
             <PurchaseRequestNewPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/purchase-request-lists"
+        element={
+          <ProtectedRoute>
+            <PurchaseRequestListsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/purchase-request-lists/new"
+        element={
+          <ProtectedRoute>
+            <PurchaseRequestListNewPage />
           </ProtectedRoute>
         }
       />
