@@ -95,4 +95,7 @@ export const ROLE_PERMISSIONS = {
   articleeditor: {
     articles: ['view', 'create', 'edit'],
   },
+  "Purchase Request Approver": {
+    purchaseRequests: ['approve'],
+  },
 };

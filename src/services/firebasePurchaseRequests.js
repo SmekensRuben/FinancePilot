@@ -37,6 +37,8 @@ function mapPurchaseRequest(documentRef) {
     items: Array.isArray(data.items) ? data.items : [],
     status: data.status || "Created",
     statusNote: data.statusNote || "",
+    approverUserId: data.approverUserId || "",
+    approverName: data.approverName || "",
     createdAt: data.createdAt,
   };
 }
@@ -79,6 +81,8 @@ export async function createPurchaseRequest(hotelUid, payload) {
     title: payload.title?.trim() || "",
     requiredDeliveryDate: payload.requiredDeliveryDate || "",
     items: cleanItems,
+    approverUserId: payload.approverUserId || "",
+    approverName: payload.approverName || "",
     status: "Created",
     statusNote: "",
     createdAt: serverTimestamp(),
@@ -96,6 +100,8 @@ export async function updatePurchaseRequest(hotelUid, requestId, payload) {
     title: payload.title?.trim() || "",
     requiredDeliveryDate: payload.requiredDeliveryDate || "",
     items: (payload.items || []).map(cleanPurchaseItem),
+    approverUserId: payload.approverUserId || "",
+    approverName: payload.approverName || "",
   });
 }
 
