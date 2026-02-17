@@ -6,6 +6,7 @@ import { db, doc, getDoc } from "../../firebaseConfig";
 import {
   Settings2,
   ClipboardList,
+  ListChecks,
 } from "lucide-react";
 
 export default function HeaderBar({ today, onLogout }) {
@@ -14,7 +15,9 @@ export default function HeaderBar({ today, onLogout }) {
   const { hotelUid, hotelUids = [], selectHotel } = useHotelContext();
   const [hotels, setHotels] = useState([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isRequisitionOpen, setIsRequisitionOpen] = useState(false);
   const settingsMenuRef = useRef(null);
+  const requisitionMenuRef = useRef(null);
 
   const settingsMenuItems = [
     {
@@ -22,10 +25,18 @@ export default function HeaderBar({ today, onLogout }) {
       action: () => navigate("/settings/general"),
       icon: Settings2,
     },
+  ];
+
+  const requisitionMenuItems = [
     {
       label: "Purchase Requests",
       action: () => navigate("/purchase-requests"),
       icon: ClipboardList,
+    },
+    {
+      label: "Purchase Request Lists",
+      action: () => navigate("/purchase-request-lists"),
+      icon: ListChecks,
     },
   ];
 
@@ -53,6 +64,10 @@ export default function HeaderBar({ today, onLogout }) {
     const handleClickOutside = (event) => {
       if (settingsMenuRef.current && !settingsMenuRef.current.contains(event.target)) {
         setIsSettingsOpen(false);
+      }
+
+      if (requisitionMenuRef.current && !requisitionMenuRef.current.contains(event.target)) {
+        setIsRequisitionOpen(false);
       }
     };
 
@@ -113,7 +128,7 @@ export default function HeaderBar({ today, onLogout }) {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-2">
-          <div ref={settingsMenuRef} className="flex justify-end w-full sm:w-auto">
+          <div ref={settingsMenuRef} className="flex justify-start w-full sm:w-auto">
             <div className="relative w-full sm:w-auto">
               <button
                 onClick={() => {
@@ -138,6 +153,47 @@ export default function HeaderBar({ today, onLogout }) {
                           onClick={() => {
                             item.action();
                             setIsSettingsOpen(false);
+                          }}
+                          className="w-full px-4 py-2 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
+                        >
+                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100">
+                            {Icon && <Icon className="h-4 w-4" />}
+                          </span>
+                          <span className="text-sm font-semibold">{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div ref={requisitionMenuRef} className="flex justify-start w-full sm:w-auto">
+            <div className="relative w-full sm:w-auto">
+              <button
+                onClick={() => {
+                  setIsRequisitionOpen((prev) => !prev);
+                }}
+                className="bg-transparent text-white px-4 py-2 rounded font-semibold w-full sm:w-auto text-sm flex items-center justify-between shadow-sm"
+                style={{ minHeight: 44 }}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="uppercase tracking-wide">Requisition</span>
+                </div>
+                <span className="ml-3 text-base">▾</span>
+              </button>
+              {isRequisitionOpen && (
+                <div className="absolute left-0 mt-2 w-64 rounded-lg shadow-xl ring-1 ring-black/5 z-30 overflow-hidden bg-white text-gray-900">
+                  <div className="py-2">
+                    {requisitionMenuItems.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          key={item.label}
+                          onClick={() => {
+                            item.action();
+                            setIsRequisitionOpen(false);
                           }}
                           className="w-full px-4 py-2 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
                         >
