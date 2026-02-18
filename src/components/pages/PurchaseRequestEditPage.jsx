@@ -10,6 +10,9 @@ import {
   getPurchaseRequestById,
   updatePurchaseRequest,
 } from "../../services/firebasePurchaseRequests";
+import { getAllUsers } from "../../services/firebaseUserManagement";
+
+const PURCHASE_REQUEST_APPROVER_ROLE = "Purchase Request Approver";
 
 const emptyItem = {
   articleNumber: "",
@@ -21,12 +24,26 @@ const emptyItem = {
   vatPercent: "",
 };
 
+function getRolesForHotel(user, hotelUid) {
+  if (!user?.roles) return [];
+  if (Array.isArray(user.roles)) return user.roles;
+  if (hotelUid && Array.isArray(user.roles[hotelUid])) return user.roles[hotelUid];
+  return [];
+}
+
+function getUserDisplayName(user) {
+  return user.name || user.displayName || user.email || user.id;
+}
+
 export default function PurchaseRequestEditPage() {
   const navigate = useNavigate();
   const { requestId } = useParams();
   const { hotelUid } = useHotelContext();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [approvers, setApprovers] = useState([]);
+  const [isApproverModalOpen, setIsApproverModalOpen] = useState(false);
+  const [selectedApproverId, setSelectedApproverId] = useState("");
   const [form, setForm] = useState({
     title: "",
     requiredDeliveryDate: "",
@@ -57,7 +74,14 @@ export default function PurchaseRequestEditPage() {
       }
 
       setLoading(true);
-      const data = await getPurchaseRequestById(hotelUid, requestId);
+      const [data, users] = await Promise.all([
+        getPurchaseRequestById(hotelUid, requestId),
+        getAllUsers(),
+      ]);
+      setApprovers(
+        users.filter((user) => getRolesForHotel(user, hotelUid).includes(PURCHASE_REQUEST_APPROVER_ROLE))
+      );
+
       if (!data) {
         setLoading(false);
         return;
@@ -68,6 +92,7 @@ export default function PurchaseRequestEditPage() {
         requiredDeliveryDate: data.requiredDeliveryDate || "",
         items: data.items?.length ? data.items : [{ ...emptyItem }],
       });
+      setSelectedApproverId(data.approverUserId || "");
       setLoading(false);
     }
 
@@ -105,8 +130,25 @@ export default function PurchaseRequestEditPage() {
       return;
     }
 
+    setIsApproverModalOpen(true);
+  };
+
+  const handleConfirmSave = async () => {
+    if (!hotelUid || !requestId || !selectedApproverId) {
+      return;
+    }
+
+    const selectedApprover = approvers.find((user) => user.id === selectedApproverId);
+    if (!selectedApprover) {
+      return;
+    }
+
     setSaving(true);
-    await updatePurchaseRequest(hotelUid, requestId, form);
+    await updatePurchaseRequest(hotelUid, requestId, {
+      ...form,
+      approverUserId: selectedApprover.id,
+      approverName: getUserDisplayName(selectedApprover),
+    });
     setSaving(false);
     navigate(`/purchase-requests/${requestId}`);
   };
@@ -277,6 +319,51 @@ export default function PurchaseRequestEditPage() {
           )}
         </Card>
       </PageContainer>
+
+      {isApproverModalOpen && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
+            <h2 className="text-lg font-semibold text-gray-900">Selecteer approver</h2>
+            <p className="mt-1 text-sm text-gray-600">
+              Enkel gebruikers met de rol &quot;Purchase Request Approver&quot; kunnen worden geselecteerd.
+            </p>
+
+            <label className="mt-4 flex flex-col gap-1 text-sm font-semibold text-gray-700">
+              Approver
+              <select
+                value={selectedApproverId}
+                onChange={(event) => setSelectedApproverId(event.target.value)}
+                className="rounded border border-gray-300 px-3 py-2 text-sm"
+              >
+                <option value="">Selecteer approver</option>
+                {approvers.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {getUserDisplayName(user)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsApproverModalOpen(false)}
+                className="px-3 py-2 border border-gray-300 rounded font-semibold text-sm"
+              >
+                Annuleren
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmSave}
+                disabled={!selectedApproverId || saving}
+                className="bg-[#b41f1f] text-white px-4 py-2 rounded font-semibold text-sm disabled:opacity-60"
+              >
+                {saving ? "Opslaan..." : "Bevestigen"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

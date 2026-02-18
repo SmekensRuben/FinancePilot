@@ -99,6 +99,7 @@ export default function PurchaseRequestsPage() {
                     <th className="py-2 pr-4">Title</th>
                     <th className="py-2 pr-4">Required delivery date</th>
                     <th className="py-2 pr-4">Status</th>
+                    <th className="py-2 pr-4">Approver</th>
                     <th className="py-2 pr-4">Aantal items</th>
                     <th className="py-2 pr-4">Actions</th>
                   </tr>
@@ -113,6 +114,7 @@ export default function PurchaseRequestsPage() {
                       <td className="py-3 pr-4 font-semibold text-gray-900">{request.title}</td>
                       <td className="py-3 pr-4 text-gray-700">{request.requiredDeliveryDate}</td>
                       <td className="py-3 pr-4 text-gray-700">{request.status || "Created"}</td>
+                      <td className="py-3 pr-4 text-gray-700">{request.approverName || "-"}</td>
                       <td className="py-3 pr-4 text-gray-700">{request.items.length}</td>
                       <td className="py-3 pr-4">
                         <div className="flex items-center gap-2">

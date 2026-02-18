@@ -56,6 +56,8 @@ export default function PurchaseRequestPreviewPage() {
     loadRequest();
   }, [loadRequest]);
 
+  const canApprove = !!request?.approverUserId && auth.currentUser?.uid === request.approverUserId;
+
   const handleDelete = async () => {
     if (!hotelUid || !requestId) {
       return;
@@ -76,7 +78,7 @@ export default function PurchaseRequestPreviewPage() {
   };
 
   const handleConfirmStatus = async () => {
-    if (!hotelUid || !requestId || !statusModal.status) {
+    if (!hotelUid || !requestId || !statusModal.status || !canApprove) {
       return;
     }
 
@@ -135,6 +137,7 @@ export default function PurchaseRequestPreviewPage() {
                 <div className="text-sm text-gray-600">
                   <div>Status: {request.status || "Created"}</div>
                   <div>Required delivery date: {request.requiredDeliveryDate}</div>
+                  <div>Approver: {request.approverName || "-"}</div>
                 </div>
               </div>
               {request.statusNote ? (
@@ -171,18 +174,25 @@ export default function PurchaseRequestPreviewPage() {
                 </table>
               </div>
 
+              {!canApprove ? (
+                <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                  Alleen de geselecteerde approver kan deze Purchase Request approven of disapproven.
+                </div>
+              ) : null}
               <div className="flex flex-wrap gap-2 justify-end pt-4 border-t border-gray-200">
                 <button
                   type="button"
                   onClick={() => openStatusModal("Disapproved")}
-                  className="px-4 py-2 border border-red-500 text-red-600 rounded font-semibold text-sm"
+                  disabled={!canApprove}
+                  className="px-4 py-2 border border-red-500 text-red-600 rounded font-semibold text-sm disabled:opacity-50"
                 >
                   Disapproved
                 </button>
                 <button
                   type="button"
                   onClick={() => openStatusModal("Approved")}
-                  className="px-4 py-2 bg-green-600 text-white rounded font-semibold text-sm"
+                  disabled={!canApprove}
+                  className="px-4 py-2 bg-green-600 text-white rounded font-semibold text-sm disabled:opacity-50"
                 >
                   Approved
                 </button>
