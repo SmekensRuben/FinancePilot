@@ -8,6 +8,7 @@ import {
   ClipboardList,
   ListChecks,
   UserCog,
+  FileSearch,
 } from "lucide-react";
 
 export default function HeaderBar({ today, onLogout }) {
@@ -17,8 +18,10 @@ export default function HeaderBar({ today, onLogout }) {
   const [hotels, setHotels] = useState([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isRequisitionOpen, setIsRequisitionOpen] = useState(false);
+  const [isToolsOpen, setIsToolsOpen] = useState(false);
   const settingsMenuRef = useRef(null);
   const requisitionMenuRef = useRef(null);
+  const toolsMenuRef = useRef(null);
 
   const settingsMenuItems = [
     {
@@ -43,6 +46,14 @@ export default function HeaderBar({ today, onLogout }) {
       label: "Purchase Request Lists",
       action: () => navigate("/purchase-request-lists"),
       icon: ListChecks,
+    },
+  ];
+
+  const toolsMenuItems = [
+    {
+      label: "Peppol-Reader",
+      action: () => navigate("/tools/peppol-reader"),
+      icon: FileSearch,
     },
   ];
 
@@ -74,6 +85,10 @@ export default function HeaderBar({ today, onLogout }) {
 
       if (requisitionMenuRef.current && !requisitionMenuRef.current.contains(event.target)) {
         setIsRequisitionOpen(false);
+      }
+
+      if (toolsMenuRef.current && !toolsMenuRef.current.contains(event.target)) {
+        setIsToolsOpen(false);
       }
     };
 
@@ -200,6 +215,47 @@ export default function HeaderBar({ today, onLogout }) {
                           onClick={() => {
                             item.action();
                             setIsRequisitionOpen(false);
+                          }}
+                          className="w-full px-4 py-2 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
+                        >
+                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100">
+                            {Icon && <Icon className="h-4 w-4" />}
+                          </span>
+                          <span className="text-sm font-semibold">{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div ref={toolsMenuRef} className="flex justify-start w-full sm:w-auto">
+            <div className="relative w-full sm:w-auto">
+              <button
+                onClick={() => {
+                  setIsToolsOpen((prev) => !prev);
+                }}
+                className="bg-transparent text-white px-4 py-2 rounded font-semibold w-full sm:w-auto text-sm flex items-center justify-between shadow-sm"
+                style={{ minHeight: 44 }}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="uppercase tracking-wide">Tools</span>
+                </div>
+                <span className="ml-3 text-base">▾</span>
+              </button>
+              {isToolsOpen && (
+                <div className="absolute left-0 mt-2 w-64 rounded-lg shadow-xl ring-1 ring-black/5 z-30 overflow-hidden bg-white text-gray-900">
+                  <div className="py-2">
+                    {toolsMenuItems.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          key={item.label}
+                          onClick={() => {
+                            item.action();
+                            setIsToolsOpen(false);
                           }}
                           className="w-full px-4 py-2 flex items-center gap-3 hover:bg-gray-100 transition-colors text-left"
                         >
