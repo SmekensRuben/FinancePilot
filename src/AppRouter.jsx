@@ -15,6 +15,7 @@ import PurchaseRequestListPreviewPage from "./components/pages/PurchaseRequestLi
 import PurchaseRequestListEditPage from "./components/pages/PurchaseRequestListEditPage.jsx";
 import UserConfigurationPage from "./components/pages/UserConfigurationPage.jsx";
 import UserConfigurationEditPage from "./components/pages/UserConfigurationEditPage.jsx";
+import PeppolReaderPage from "./components/pages/PeppolReaderPage.jsx";
 
 export default function AppRouter() {
   return (
@@ -114,6 +115,14 @@ export default function AppRouter() {
         element={
           <ProtectedRoute>
             <PurchaseRequestListEditPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/tools/peppol-reader"
+        element={
+          <ProtectedRoute>
+            <PeppolReaderPage />
           </ProtectedRoute>
         }
       />
